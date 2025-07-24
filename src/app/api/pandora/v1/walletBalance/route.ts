@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from "../../../server/db";
-import { walletBalanceMonthly } from "../../../server/db/schema";
+import { db } from "@/src/server/db/database";
+import { walletBalanceMonthly } from "@/src/server/db/schema";
 
 export async function GET() {
     try {

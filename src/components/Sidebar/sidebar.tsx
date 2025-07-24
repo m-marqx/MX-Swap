@@ -19,12 +19,12 @@ import { useAccount, useBalance } from 'wagmi'
 const navigationItems = [
     {
         title: "Swap",
-        url: "/swap",
+        url: "/pandora/swap",
         icon: ArrowLeftRight,
     },
     {
         title: "AI Signals",
-        url: "/ai-signals",
+        url: "/pandora/ai-signals",
         icon: BarChart3,
     },
 ]
@@ -32,7 +32,7 @@ const navigationItems = [
 const walletItems = [
     {
         title: "Portfolio",
-        url: "/portfolio",
+        url: "/pandora/portfolio",
         icon: TrendingUp,
     },
 ]

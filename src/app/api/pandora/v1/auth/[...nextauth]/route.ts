@@ -7,10 +7,10 @@ import {
   getAddressFromMessage
 } from '@reown/appkit-siwe'
 import { createPublicClient, http } from 'viem'
-import { users } from '../../../../server/db/schema'
+import { users } from '@/src/server/db/schema'
 
 import { eq } from "drizzle-orm"
-import { db } from '../../../../server/db/database'
+import { db } from '@/src/server/db/database'
 
 declare module 'next-auth' {
   interface Session extends SIWESession {

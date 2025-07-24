@@ -2,10 +2,12 @@
 
 import React from "react";
 import { useEffect, useState, useCallback } from "react";
-import Graph, { type GraphProps } from "../../components/BarGraph/Graph";
+import Graph, { type GraphProps } from "@/src/components/BarGraph/Graph";
 import TableData from "@/src/components/Table/ModelTable";
 import { AppSidebar } from "@/src/components/Sidebar/sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import axios from "axios";
+import Image from "next/image";
 
 interface ModelRecommendation {
   date: string | null;
@@ -24,14 +26,14 @@ export default function Home() {
   const fetchTableData = useCallback(async () => {
     try {
       setTableLoading(true);
-      const response = await fetch("/api/tableData");
+      const response = await axios.get("/api/pandora/v1/tableData");
 
-      if (!response.ok) {
+      if ((response.status !== 200) || !response.data) {
+        console.error("Failed to fetch table data:", response.statusText);
         throw new Error("Failed to fetch table data");
       }
 
-      const result = await response.json();
-      setTableData(result.data || []);
+      setTableData(response.data.data || []);
     } catch (error) {
       console.error("Error fetching table data:", error);
     } finally {
@@ -53,7 +55,7 @@ export default function Home() {
   const fetchChartData = useCallback(async () => {
     try {
       setIsLoading(true);
-      await fetch("/api/walletBalance")
+      await fetch("/api/pandora/v1/walletBalance")
         .then((response) => {
           if (!response.ok) {
             throw new Error(
@@ -123,7 +125,15 @@ export default function Home() {
       <SidebarProvider open={true} defaultOpen={true}>
         <AppSidebar />
         <div className="flex justify-center items-center w-full">
-          <div className="animate-spin rounded-full h-32 w-32 border-background border-6 border-t-6 border-t-primary border-b-6 border-b-primary"></div>
+          <div className="animate-spin rounded-full h-32 w-32 border-background border-6 border-t-6 border-t-primary border-b-6 border-b-primary">
+            <Image
+                src="/icons/logo.svg"
+                alt="Pandora Swap Logo"
+                width={128}
+                height={128}
+                className="absolute w-32 h-32"
+            />
+          </div>
         </div>
       </SidebarProvider>
     );
