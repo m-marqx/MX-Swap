@@ -8,7 +8,7 @@ export const Footer = () => {
                         © 2025 Pandora Swap. All rights reserved.
                     </p>
                     <p className="text-muted-foreground text-sm">
-                        Built with ❤️ by Archie Marques
+                        Made with ❤️ by Archie Marques
                     </p>
                 </div>
         </footer>
