@@ -240,7 +240,7 @@ export default function ModelTable() {
                                         colSpan={columns.length}
                                         className="h-24 text-center"
                                     >
-                                            {loading ? "Loading..." : "No results."}
+                                            {loading ? "Loading..." : "No data available"}
                                     </TableCell>
                                 </TableRow>
                             )}
