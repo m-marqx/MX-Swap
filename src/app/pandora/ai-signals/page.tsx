@@ -125,13 +125,14 @@ export default function Home() {
       <SidebarProvider open={true} defaultOpen={true}>
         <AppSidebar />
         <div className="flex justify-center items-center w-full">
-          <div className="animate-spin rounded-full h-32 w-32 border-background border-6 border-t-6 border-t-primary border-b-6 border-b-primary">
+          <div className="relative h-32 w-32 flex justify-center items-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-background border-6 border-t-6 border-t-primary border-b-6 border-b-primary"></div>
             <Image
                 src="/icons/logo.svg"
                 alt="Pandora Swap Logo"
-                width={128}
-                height={128}
-                className="absolute w-32 h-32"
+                width={512}
+                height={512}
+                className="absolute w-18 h-18"
             />
           </div>
         </div>
