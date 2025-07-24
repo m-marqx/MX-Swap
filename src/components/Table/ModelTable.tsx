@@ -20,6 +20,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import axios from "axios"
 
 type TableData = {
     date: string
@@ -100,10 +101,16 @@ export default function ModelTable() {
     const fetchTableData = useCallback(async () => {
         if (loading || !hasMore) return
         setLoading(true)
-        const res = await fetch(`/api/tableData?page=${page}`)
-        const json = await res.json()
-        if (json.data.length === 0) setHasMore(false)
-        setData(json.data)
+        const res = await axios.get(`/api/pandora/v1/tableData?page=${page}`)
+        if (res.status !== 200) {
+            console.error("Failed to fetch table data:", res.statusText)
+            setLoading(false)
+            return
+        }
+
+        if (res.data.length === 0) setHasMore(false)
+
+        setData(res.data.data)
         setLoading(false)
     }, [loading, hasMore, page])
 

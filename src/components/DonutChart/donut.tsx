@@ -1,3 +1,4 @@
+import axios from "axios";
 import * as echarts from "echarts";
 import React, { useRef, useEffect, useCallback, useState } from "react";
 
@@ -34,9 +35,8 @@ export default function DonutChart({
     const chartRef = useRef<HTMLDivElement>(null);
     const [data, setData] = useState<PortfolioAsset[]>([]);
     const fetchPortfolio = useCallback(async () => {
-        const res = await fetch(`/api/portfolio?address=${address}`);
-        const json = await res.json();
-        setData(json.result || []);
+        const res = await axios.get(`/api/pandora/v1/portfolio?address=${address}`);
+        setData(res.data.result || []);
     }, [address]);
 
     useEffect(() => {

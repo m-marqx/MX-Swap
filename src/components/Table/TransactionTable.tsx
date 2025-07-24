@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 
 import { TransactionHistoryItem } from "@/types/AcoountTypes";
+import axios from "axios";
 
 type TokenInfo = {
     token_name: string;
@@ -223,10 +224,10 @@ export default function TransactionTable({ address }: { address: string }) {
             return;
         }
         // Simulating API fetch for brevity in example
-        const res = await fetch(`/api/portfolio/account?address=${address}`);
-        const jsonData = await res.json();
+        const res = await axios.get(`/api/pandora/v1/portfolio/account?address=${address}`);
+        const jsonData = res.data;
 
-        if (res.ok && jsonData.result) {
+        if (res.status === 200 && jsonData.result) {
             const txs = Array.isArray(jsonData.result)
                 ? jsonData.result.map((item: TransactionHistoryItem) => {
                     const erc20 = Array.isArray(item.erc20_transfers)

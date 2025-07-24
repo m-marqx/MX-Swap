@@ -19,6 +19,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import axios from "axios"
 
 type PortfolioAsset = {
     token_address: string
@@ -123,9 +124,8 @@ export default function PortfolioTable({ address }: { address: string }) {
 
     const fetchPortfolio = useCallback(async () => {
         setLoading(true)
-        const res = await fetch(`/api/portfolio?address=${address}`)
-        const json = await res.json()
-        setData(json.result || [])
+        const res = await axios.get(`/api/pandora/v1/portfolio?address=${address}`)
+        setData(res.data.result || [])
         setLoading(false)
     }, [address])
 
