@@ -266,9 +266,9 @@ export default function TransactionTable({ address }: { address: string }) {
                             : undefined,
                         to_token: receiveTransfers.length > 0
                             ? {
-                                token_name: receiveTransfers[0].token_name,
-                                token_symbol: receiveTransfers[0].token_symbol,
-                                token_logo: receiveTransfers[0].token_logo,
+                                token_name: receiveTransfers[receiveTransfers.length - 1].token_name,
+                                token_symbol: receiveTransfers[receiveTransfers.length - 1].token_symbol,
+                                token_logo: receiveTransfers[receiveTransfers.length - 1].token_logo,
                                 value_formatted: calculateTotalValue(receiveTransfers).toString(),
                             }
                             : undefined,
