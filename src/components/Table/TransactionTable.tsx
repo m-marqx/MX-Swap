@@ -261,7 +261,7 @@ export default function TransactionTable({ address }: { address: string }) {
                                 token_name: sendTransfers[0].token_name,
                                 token_symbol: sendTransfers[0].token_symbol,
                                 token_logo: sendTransfers[0].token_logo,
-                                value_formatted: calculateTotalValue(sendTransfers).toString(),
+                                value_formatted: calculateTotalValue(sendTransfers).toFixed(Number(sendTransfers[0].token_decimals))
                             }
                             : undefined,
                         to_token: receiveTransfers.length > 0
@@ -269,7 +269,7 @@ export default function TransactionTable({ address }: { address: string }) {
                                 token_name: receiveTransfers[receiveTransfers.length - 1].token_name,
                                 token_symbol: receiveTransfers[receiveTransfers.length - 1].token_symbol,
                                 token_logo: receiveTransfers[receiveTransfers.length - 1].token_logo,
-                                value_formatted: calculateTotalValue(receiveTransfers).toString(),
+                                value_formatted: calculateTotalValue(receiveTransfers).toFixed(Number(receiveTransfers[receiveTransfers.length - 1].token_decimals)),
                             }
                             : undefined,
                     };
