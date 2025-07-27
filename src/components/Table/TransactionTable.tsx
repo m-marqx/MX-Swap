@@ -25,6 +25,14 @@ import {
 import { TransactionHistoryItem } from "@/types/AcoountTypes";
 import axios from "axios";
 
+type Erc20Transfer = {
+    token_name: string;
+    token_symbol: string;
+    token_logo: string | null;
+    value_formatted?: string;
+    direction?: string;
+};
+
 type TokenInfo = {
     token_name: string;
     token_symbol: string;
@@ -233,37 +241,37 @@ export default function TransactionTable({ address }: { address: string }) {
                     const erc20 = Array.isArray(item.erc20_transfers)
                         ? item.erc20_transfers
                         : [];
+
+                    const sendTransfers = erc20.filter(transfer => transfer.direction === 'send');
+                    const receiveTransfers = erc20.filter(transfer => transfer.direction === 'receive');
+
+                    const calculateTotalValue = (transfers: Erc20Transfer[]) => {
+                        return transfers.reduce((sum, transfer) => {
+                            const value = parseFloat(transfer.value_formatted || '0');
+                            return sum + value;
+                        }, 0);
+                    };
+
                     return {
                         block_timestamp: item.block_timestamp,
                         transaction_fee: item.transaction_fee,
                         summary: item.summary,
-                        from_token: erc20[0]
+                        from_token: sendTransfers.length > 0
                             ? {
-                                token_name: erc20[0].token_name,
-                                token_symbol: erc20[0].token_symbol,
-                                token_logo: erc20[0].token_logo,
-                                value_formatted: erc20[0].value_formatted,
+                                token_name: sendTransfers[0].token_name,
+                                token_symbol: sendTransfers[0].token_symbol,
+                                token_logo: sendTransfers[0].token_logo,
+                                value_formatted: calculateTotalValue(sendTransfers).toString(),
                             }
                             : undefined,
-                        to_token:
-                            erc20.length > 1
-                                ? {
-                                    token_name: erc20[erc20.length - 1].token_name,
-                                    token_symbol: erc20[erc20.length - 1].token_symbol,
-                                    token_logo: erc20[erc20.length - 1].token_logo,
-                                    value_formatted: erc20[erc20.length - 1].value_formatted,
-                                }
-                                : erc20[0] // If only one transfer, it can be both from and to in some contexts, or just one side.
-                                    ? {
-                                        // Assuming if one transfer, it might be 'to' if 'from' is the address itself, or vice-versa.
-                                        // This logic might need adjustment based on how summary/transfers work.
-                                        // For simplicity, if only one erc20 transfer, let's assume it's the primary token involved.
-                                        token_name: erc20[0].token_name,
-                                        token_symbol: erc20[0].token_symbol,
-                                        token_logo: erc20[0].token_logo,
-                                        value_formatted: erc20[0].value_formatted,
-                                    }
-                                    : undefined,
+                        to_token: receiveTransfers.length > 0
+                            ? {
+                                token_name: receiveTransfers[0].token_name,
+                                token_symbol: receiveTransfers[0].token_symbol,
+                                token_logo: receiveTransfers[0].token_logo,
+                                value_formatted: calculateTotalValue(receiveTransfers).toString(),
+                            }
+                            : undefined,
                     };
                 })
                 : [];
