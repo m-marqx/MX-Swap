@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useRef, useCallback } from "react"
+import React, { useState, useRef } from "react"
 import {
     ColumnDef,
     flexRender,
@@ -20,6 +20,33 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import axios from "axios"
+
+const promiseCache = new Map<string, Promise<unknown>>()
+const dataCache = new Map<string, unknown>()
+
+function suspenseWrapper<T>(key: string, promiseFn: () => Promise<T>): T {
+    if (dataCache.has(key)) {
+        return dataCache.get(key) as T
+    }
+
+    if (promiseCache.has(key)) {
+        throw promiseCache.get(key)
+    }
+
+    const promise = promiseFn()
+        .then(data => {
+            dataCache.set(key, data)
+            promiseCache.delete(key)
+            return data
+        })
+        .catch(error => {
+            promiseCache.delete(key)
+            throw error
+        })
+
+    promiseCache.set(key, promise)
+    throw promise
+}
 
 type PortfolioAsset = {
     token_address: string
@@ -98,40 +125,22 @@ const columns: ColumnDef<PortfolioAsset>[] = [
 ]
 
 export default function PortfolioTable({ address }: { address: string }) {
-    if  (!address) {
+    if (!address) {
         return <div className="text-center flex flex-col justify-center h-88 text-gray-500">Please connect your wallet</div>
     }
 
-    const [data, setData] = useState<PortfolioAsset[]>([])
-    const [loading, setLoading] = useState(false)
+    const data = suspenseWrapper(
+        `portfolio-${address}`,
+        async () => {
+            const res = await axios.get(`/api/pandora/v1/portfolio?address=${address}`)
+            return res.data.result || []
+        }
+    )
+
     const [sorting, setSorting] = useState<SortingState>([
         { id: "usd_value", desc: true },
     ])
     const containerRef = useRef<HTMLDivElement>(null)
-
-    // Infinite scroll handler
-    useEffect(() => {
-        const handleScroll = () => {
-            const el = containerRef.current
-            if (!el || loading) return
-        }
-        const el = containerRef.current
-        if (el) el.addEventListener("scroll", handleScroll)
-        return () => {
-            if (el) el.removeEventListener("scroll", handleScroll)
-        }
-    }, [])
-
-    const fetchPortfolio = useCallback(async () => {
-        setLoading(true)
-        const res = await axios.get(`/api/pandora/v1/portfolio?address=${address}`)
-        setData(res.data.result || [])
-        setLoading(false)
-    }, [address])
-
-    useEffect(() => {
-        fetchPortfolio()
-    }, [fetchPortfolio])
 
     const table = useReactTable({
         data,
@@ -238,7 +247,7 @@ export default function PortfolioTable({ address }: { address: string }) {
                                         colSpan={columns.length}
                                         className="h-24 text-center"
                                     >
-                                            {loading ? "Loading..." : "No results."}
+                                        No results.
                                     </TableCell>
                                 </TableRow>
                             )}
