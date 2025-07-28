@@ -7,7 +7,7 @@ import TableData from "@/src/components/Table/ModelTable";
 import { AppSidebar } from "@/src/components/Sidebar/sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import axios from "axios";
-import Image from "next/image";
+import Loading from "@/src/components/Loading";
 
 interface ModelRecommendation {
   date: string | null;
@@ -124,18 +124,7 @@ export default function Home() {
     return (
       <SidebarProvider open={true} defaultOpen={true}>
         <AppSidebar />
-        <div className="flex justify-center items-center w-full">
-          <div className="relative h-32 w-32 flex justify-center items-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-background border-6 border-t-6 border-t-primary border-b-6 border-b-primary"></div>
-            <Image
-                src="/icons/logo.svg"
-                alt="Pandora Swap Logo"
-                width={512}
-                height={512}
-                className="absolute w-18 h-18"
-            />
-          </div>
-        </div>
+          <Loading />
       </SidebarProvider>
     );
   }
