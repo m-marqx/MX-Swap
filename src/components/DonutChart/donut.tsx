@@ -1,6 +1,6 @@
 import axios from "axios";
 import * as echarts from "echarts";
-import React, { useRef, useEffect, useCallback, useState } from "react";
+import React, { useRef, useEffect } from "react";
 
 type EChartsOption = echarts.EChartsOption;
 
@@ -11,16 +11,32 @@ interface DonutChartProps {
     title?: string;
 }
 
-type PortfolioAsset = {
-    token_address: string;
-    name: string;
-    symbol: string;
-    thumbnail: string;
-    usd_price: number;
-    usd_value: number;
-    usd_price_24hr_percent_change: number;
-    amount: number;
-};
+const donutPromiseCache = new Map<string, Promise<unknown>>()
+const donutDataCache = new Map<string, unknown>()
+
+function donutSuspenseWrapper<T>(key: string, promiseFn: () => Promise<T>): T {
+    if (donutDataCache.has(key)) {
+        return donutDataCache.get(key) as T
+    }
+
+    if (donutPromiseCache.has(key)) {
+        throw donutPromiseCache.get(key)
+    }
+
+    const promise = promiseFn()
+        .then(data => {
+            donutDataCache.set(key, data)
+            donutPromiseCache.delete(key)
+            return data
+        })
+        .catch(error => {
+            donutPromiseCache.delete(key)
+            throw error
+        })
+
+    donutPromiseCache.set(key, promise)
+    throw promise
+}
 
 export default function DonutChart({
     address = "",
@@ -33,15 +49,13 @@ export default function DonutChart({
     }
 
     const chartRef = useRef<HTMLDivElement>(null);
-    const [data, setData] = useState<PortfolioAsset[]>([]);
-    const fetchPortfolio = useCallback(async () => {
-        const res = await axios.get(`/api/pandora/v1/portfolio?address=${address}`);
-        setData(res.data.result || []);
-    }, [address]);
-
-    useEffect(() => {
-        fetchPortfolio();
-    }, [fetchPortfolio]);
+    const data = donutSuspenseWrapper(
+        `donut-${address}`,
+        async () => {
+            const res = await axios.get(`/api/pandora/v1/portfolio?address=${address}`);
+            return res.data.result || [];
+        }
+    );
 
     // Define stable coins based on the provided data, all Stablcoins contains "USD" in their symbol,  the only exception is DAI which is a stable coin but does not contain "USD" in its symbol.
     const stableCoinsSymbols = data
