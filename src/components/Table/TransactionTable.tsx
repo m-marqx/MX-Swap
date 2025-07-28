@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import React, { useState, useRef, useMemo, useCallback } from "react";
 import {
     ColumnDef,
     flexRender,
@@ -24,6 +24,33 @@ import {
 
 import { TransactionHistoryItem } from "@/types/AcoountTypes";
 import axios from "axios";
+
+const transactionPromiseCache = new Map<string, Promise<unknown>>()
+const transactionDataCache = new Map<string, unknown>()
+
+function transactionSuspenseWrapper<T>(key: string, promiseFn: () => Promise<T>): T {
+    if (transactionDataCache.has(key)) {
+        return transactionDataCache.get(key) as T
+    }
+
+    if (transactionPromiseCache.has(key)) {
+        throw transactionPromiseCache.get(key)
+    }
+
+    const promise = promiseFn()
+        .then(data => {
+            transactionDataCache.set(key, data)
+            transactionPromiseCache.delete(key)
+            return data
+        })
+        .catch(error => {
+            transactionPromiseCache.delete(key)
+            throw error
+        })
+
+    transactionPromiseCache.set(key, promise)
+    throw promise
+}
 
 type Erc20Transfer = {
     token_name: string;
@@ -53,8 +80,60 @@ export default function TransactionTable({ address }: { address: string }) {
         return <div className="text-center flex flex-col justify-center h-201 text-gray-500">Please connect your wallet</div>
     }
 
-    const [data, setData] = useState<TxRow[]>([]);
-    const [loading, setLoading] = useState(false);
+    const data = transactionSuspenseWrapper(
+        `transactions-${address}`,
+        async () => {
+            const res = await axios.get(`/api/pandora/v1/portfolio/account?address=${address}`);
+            const jsonData = res.data;
+
+            if (res.status === 200 && jsonData.result) {
+                const txs = Array.isArray(jsonData.result)
+                    ? jsonData.result.map((item: TransactionHistoryItem) => {
+                        const erc20 = Array.isArray(item.erc20_transfers)
+                            ? item.erc20_transfers
+                            : [];
+
+                        const sendTransfers = erc20.filter(transfer => transfer.direction === 'send');
+                        const receiveTransfers = erc20.filter(transfer => transfer.direction === 'receive');
+
+                        const calculateTotalValue = (transfers: Erc20Transfer[]) => {
+                            return transfers.reduce((sum, transfer) => {
+                                const value = parseFloat(transfer.value_formatted || '0');
+                                return sum + value;
+                            }, 0);
+                        };
+
+                        return {
+                            block_timestamp: item.block_timestamp,
+                            transaction_fee: item.transaction_fee,
+                            summary: item.summary,
+                            from_token: sendTransfers.length > 0
+                                ? {
+                                    token_name: sendTransfers[sendTransfers.length - 1].token_name,
+                                    token_symbol: sendTransfers[sendTransfers.length - 1].token_symbol,
+                                    token_logo: sendTransfers[sendTransfers.length - 1].token_logo,
+                                    value_formatted: calculateTotalValue(sendTransfers).toFixed(Number(sendTransfers[sendTransfers.length - 1].token_decimals)),
+                                }
+                                : undefined,
+                            to_token: receiveTransfers.length > 0
+                                ? {
+                                    token_name: receiveTransfers[receiveTransfers.length - 1].token_name,
+                                    token_symbol: receiveTransfers[receiveTransfers.length - 1].token_symbol,
+                                    token_logo: receiveTransfers[receiveTransfers.length - 1].token_logo,
+                                    value_formatted: calculateTotalValue(receiveTransfers).toFixed(Number(receiveTransfers[receiveTransfers.length - 1].token_decimals)),
+                                }
+                                : undefined,
+                        };
+                    })
+                    : [];
+                return txs;
+            } else {
+                console.error(`Error fetching transactions or unexpected data format:`, jsonData);
+                return [];
+            }
+        }
+    );
+
     const [sorting, setSorting] = useState<SortingState>([
         { id: "block_timestamp", desc: true },
     ]);
@@ -224,72 +303,6 @@ export default function TransactionTable({ address }: { address: string }) {
         [filterInputVisibility, toggleFilterInput],
     );
 
-    const fetchPortfolio = useCallback(async () => {
-        setLoading(true);
-        if (!address) {
-            setData([]);
-            setLoading(false);
-            return;
-        }
-        // Simulating API fetch for brevity in example
-        const res = await axios.get(`/api/pandora/v1/portfolio/account?address=${address}`);
-        const jsonData = res.data;
-
-        if (res.status === 200 && jsonData.result) {
-            const txs = Array.isArray(jsonData.result)
-                ? jsonData.result.map((item: TransactionHistoryItem) => {
-                    const erc20 = Array.isArray(item.erc20_transfers)
-                        ? item.erc20_transfers
-                        : [];
-
-                    const sendTransfers = erc20.filter(transfer => transfer.direction === 'send');
-                    const receiveTransfers = erc20.filter(transfer => transfer.direction === 'receive');
-
-                    const calculateTotalValue = (transfers: Erc20Transfer[]) => {
-                        return transfers.reduce((sum, transfer) => {
-                            const value = parseFloat(transfer.value_formatted || '0');
-                            return sum + value;
-                        }, 0);
-                    };
-
-                    return {
-                        block_timestamp: item.block_timestamp,
-                        transaction_fee: item.transaction_fee,
-                        summary: item.summary,
-                        from_token: sendTransfers.length > 0
-                            ? {
-                                token_name: sendTransfers[0].token_name,
-                                token_symbol: sendTransfers[0].token_symbol,
-                                token_logo: sendTransfers[0].token_logo,
-                                value_formatted: calculateTotalValue(sendTransfers).toFixed(Number(sendTransfers[0].token_decimals))
-                            }
-                            : undefined,
-                        to_token: receiveTransfers.length > 0
-                            ? {
-                                token_name: receiveTransfers[receiveTransfers.length - 1].token_name,
-                                token_symbol: receiveTransfers[receiveTransfers.length - 1].token_symbol,
-                                token_logo: receiveTransfers[receiveTransfers.length - 1].token_logo,
-                                value_formatted: calculateTotalValue(receiveTransfers).toFixed(Number(receiveTransfers[receiveTransfers.length - 1].token_decimals)),
-                            }
-                            : undefined,
-                    };
-                })
-                : [];
-            setData(txs);
-        } else {
-            console.error(
-                `Error fetching transactions or unexpected data format:`,
-                jsonData,
-            );
-            setData([]);
-        }
-        setLoading(false);
-    }, [address]);
-
-    useEffect(() => {
-        fetchPortfolio();
-    }, [fetchPortfolio]);
-
     const table = useReactTable({
         data,
         columns,
@@ -421,7 +434,7 @@ export default function TransactionTable({ address }: { address: string }) {
                                         colSpan={columns.length}
                                         className="h-24 text-center"
                                     >
-                                        {loading ? "Loading..." : "No results."}
+                                        No results.
                                     </TableCell>
                                 </TableRow>
                             )}
