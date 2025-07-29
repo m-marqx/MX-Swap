@@ -42,14 +42,25 @@ import {
     CommandList,
 } from "@/components/ui/command"
 
+interface ParaSwapDataPrice {
+    destAmount: string;
+    destDecimals: number;
+    srcAmount: string;
+    srcDecimals: number;
+    srcUSD: number;
+    destUSD: number;
+    gasCost: string;
+    gasCostUSD: number;
+    destToken: `0x${string}`;
+    srcToken: `0x${string}`;
+}
 
 interface ParaSwapData {
-    txParams: {
-        to: `0x${string}`;
-        data: `0x${string}`;
-        value: string;
-        gasPrice: string;
-    };
+    to: `0x${string}`;
+    data: `0x${string}`;
+    value: string;
+    gasPrice: string;
+    gas: bigint;
     priceRoute: {
         destAmount: string;
         destDecimals: number;
@@ -57,9 +68,13 @@ interface ParaSwapData {
         srcDecimals: number;
         srcUSD: number;
         destUSD: number;
+        gasCost: string;
         gasCostUSD: number;
+        destToken: `0x${string}`;
+        srcToken: `0x${string}`;
     };
 }
+
 
 const tokenList = uniswapTokens.tokens
 
@@ -97,6 +112,7 @@ const defaultTimerValue = 5;
 
 export function SwapWidget() {
     const [paraSwapData, setParaSwapData] = useState<ParaSwapData | null>(null);
+    const [paraswapPriceData, setParaswapPriceData] = useState<ParaSwapDataPrice | null>(null);
     const [btcPriceParaSwap, setBtcPriceParaSwap] = useState<number | null>(null);
     const [srcUSD, setSrcUSD] = useState<string>("");
     const [destUSD, setDestUSD] = useState<string>("");
@@ -113,7 +129,7 @@ export function SwapWidget() {
     const [destTokenImage, setDestTokenImage] = useState<string | null>("https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdAC17F958D2ee523a2206206994597C13D831ec7/logo.png");
     const [srcBalanceValue, setSrcBalanceValue] = useState<string>("");
     const [destBalanceValue, setDestBalanceValue] = useState<string>("");
-    const [srcAmount, setAmount] = useState<string | null>("1");
+    const [srcAmount, setAmount] = useState<string | null>("0.00000001");
     const [destAmount, setDestAmount] = useState<string | undefined | null>(null);
     const [isValid, setIsValid] = useState<boolean>(false);
     const [secondsToNextFetch, setSecondsToNextFetch] = useState<number | null>(null);
@@ -166,10 +182,10 @@ export function SwapWidget() {
 
     const ConnectWalletButton = (
         <Button
-            className="bg-main-color w-full rounded-3xl h-full"
-            onClick={() => {
-                open({ view: "Connect" });
-            }}
+        className="bg-main-color w-full rounded-3xl h-full"
+        onClick={() => {
+            open({ view: "Connect" });
+        }}
         >
             <span className="text-large-size text-[#000000a6] font-semibold">Connect Wallet</span>
         </Button>
@@ -226,39 +242,62 @@ export function SwapWidget() {
         });
         const destBalance =
             Number(destTokenDataBalance.value) / 10 ** destTokenDecimals;
-        setDestBalanceValue(
-            `${destBalance.toFixed(destTokenDecimals)} ${destTokenData.symbol}`,
-        );
+            setDestBalanceValue(
+                `${destBalance.toFixed(destTokenDecimals)} ${destTokenData.symbol}`,
+            );
 
         setSecondsToNextFetch(defaultTimerValue)
 
         try {
-            // ParaSwap
-            const paraswapUrl = new URL("https://api.paraswap.io/swap");
+            const paraswapUrl = new URL("https://api.paraswap.io/prices/");
             paraswapUrl.searchParams.append("srcToken", srcTokenData.address);
-            paraswapUrl.searchParams.append(
-                "srcDecimals",
-                srcTokenDecimals.toString(),
-            );
+            paraswapUrl.searchParams.append("srcDecimals", srcTokenDecimals.toString());
+
             paraswapUrl.searchParams.append("destToken", destTokenData.address);
-            paraswapUrl.searchParams.append(
-                "destDecimals",
-                destTokenDecimals.toString(),
-            );
+            paraswapUrl.searchParams.append("destDecimals", destTokenDecimals.toString());
+
             paraswapUrl.searchParams.append("amount", formattedSrcAmount);
             paraswapUrl.searchParams.append("userAddress", walletAddress);
-            paraswapUrl.searchParams.append("slippage", slippageRef.current.toString());
+
             paraswapUrl.searchParams.append("network", "137");
             paraswapUrl.searchParams.append("side", "SELL");
+
+            paraswapUrl.searchParams.append("version", "6.2");
+            paraswapUrl.searchParams.append("partner", "PandoraSwap");
 
             const paraResp = await axios.get(paraswapUrl.toString(), { signal });
             const pData = paraResp.data as ParaSwapData;
             const paraswapFormattedAmount =
                 Number(pData.priceRoute.destAmount) / 10 ** destTokenDecimals;
-            setParaSwapData(pData);
+
+            setParaswapPriceData(pData.priceRoute);
+
+            const gasValue = await axios.get("https://api.paraswap.io/prices/gas/137?eip1559=false")
+            const transactionUrl = new URL("https://api.paraswap.io/transactions/137/")
+            transactionUrl.searchParams.append("ignoreGasEstimate", 'false');
+            transactionUrl.searchParams.append("ignoreAllowance", 'false');
+            transactionUrl.searchParams.append("gasPrice", gasValue.data.fast.toString());
+
+            const paraswapTransaction = await axios.post(transactionUrl.toString(), {
+                destAmount: pData.priceRoute.destAmount,
+                destDecimals: pData.priceRoute.destDecimals,
+                destToken: pData.priceRoute.destToken,
+                partner: "PandoraSwap",
+                priceRoute: pData.priceRoute,
+                receiver: walletAddress,
+                srcAmount: pData.priceRoute.srcAmount,
+                srcDecimals: pData.priceRoute.srcDecimals,
+                srcToken: pData.priceRoute.srcToken,
+                userAddress: walletAddress,
+                // slippage: slippageRef.current.toString(),
+            })
+
+            setParaSwapData(paraswapTransaction.data);
+
             setSrcUSD(`${Number(pData.priceRoute.srcUSD).toFixed(2)} USD`);
             setDestUSD(`${Number(pData.priceRoute.destUSD).toFixed(2)} USD`);
-            setGasCost(BigInt(pData.txParams.gasPrice))
+            setGasCost(gasValue.data.fast)
+
             setBtcPriceParaSwap(paraswapFormattedAmount);
 
             // KyberSwap
@@ -356,7 +395,7 @@ export function SwapWidget() {
 
         try {
             // ParaSwap
-            const paraswapUrl = new URL("https://api.paraswap.io/swap");
+            const paraswapUrl = new URL("https://api.paraswap.io/price");
             paraswapUrl.searchParams.append("srcToken", destTokenData.address);
             paraswapUrl.searchParams.append("srcDecimals", destTokenDecimals.toString());
 
@@ -366,16 +405,38 @@ export function SwapWidget() {
             paraswapUrl.searchParams.append("amount", formattedDestAmount);
             paraswapUrl.searchParams.append("userAddress", walletAddress);
 
-            paraswapUrl.searchParams.append("slippage", slippageRef.current.toString());
             paraswapUrl.searchParams.append("network", "137");
             paraswapUrl.searchParams.append("side", "SELL");
+
+            paraswapUrl.searchParams.append("version", '6.2');
+            paraswapUrl.searchParams.append("partner", "PandoraSwap");
 
             console.log("Paraswap URL:", paraswapUrl.toString());
             const paraResp = await axios.get(paraswapUrl.toString(), { signal });
             const pData = paraResp.data as ParaSwapData;
             const paraswapFormattedAmount = Number(pData.priceRoute.destAmount) / 10 ** srcTokenDecimals;
 
-            setParaSwapData(pData);
+            setParaswapPriceData(pData.priceRoute);
+
+            const gasValue = await axios.get("https://api.paraswap.io/prices/gas/137?eip1559=false")
+            const transactionUrl = `https://api.paraswap.io/transactions/137/${gasValue.data.fast}`
+
+            const paraswapTransaction = await axios.post(transactionUrl, {
+                destAmount: pData.priceRoute.destAmount,
+                destDecimals: pData.priceRoute.destDecimals,
+                destToken: pData.priceRoute.destToken,
+                partner: "PandoraSwap",
+                priceRoute: pData.priceRoute,
+                receiver: walletAddress,
+                srcAmount: pData.priceRoute.srcAmount,
+                srcDecimals: pData.priceRoute.srcDecimals,
+                srcToken: pData.priceRoute.srcToken,
+                userAddress: walletAddress,
+                // slippage: slippageRef.current.toString(),
+
+            })
+
+            setParaSwapData(paraswapTransaction.data);
 
             setSrcUSD(`${Number(pData.priceRoute.srcUSD).toFixed(2)} USD`);
             setDestUSD(`${Number(pData.priceRoute.destUSD).toFixed(2)} USD`);
@@ -548,11 +609,11 @@ export function SwapWidget() {
     const paraswapSwap = async () => {
         if (paraSwapData) {
             sendTransaction(config, {
-                to: paraSwapData.txParams.to,
-                data: paraSwapData.txParams.data,
+                to: paraSwapData.to,
+                data: paraSwapData.data,
                 maxFeePerGas: gasCost,
                 maxPriorityFeePerGas: gasCost,
-                value: BigInt(paraSwapData.txParams.value),
+                value: BigInt(paraSwapData.value),
             });
         }
     };
@@ -625,9 +686,9 @@ export function SwapWidget() {
                 setSwapData(swapData);
             } else {
                 const swapData = {
-                    to: paraSwapData.txParams.to,
-                    data: paraSwapData.txParams.data,
-                    value: BigInt(paraSwapData.txParams.value),
+                    to: paraSwapData.to,
+                    data: paraSwapData.data,
+                    value: BigInt(paraSwapData.value),
                     maxFeePerGas: gasCost!,
                     maxPriorityFeePerGas: gasCost!,
                 }
@@ -708,7 +769,7 @@ export function SwapWidget() {
                             <span className="text-secondary-size text-secondary-text-color font-semibold">Network Fee USD:</span> {(() => {
                                 const value = bestPriceText === "KyberSwap"
                                     ? Number(kyberSwapData?.gasUsd)
-                                    : Number(paraSwapData?.priceRoute.gasCostUSD);
+                                    : Number(paraswapPriceData?.gasCostUSD);
                                 // toFixed(4) then trim any trailing zeros and optional decimal point
                                 return parseFloat(value.toFixed(4)).toString();
                             })()} USD
