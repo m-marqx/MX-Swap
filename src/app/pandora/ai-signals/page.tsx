@@ -42,7 +42,7 @@ function ChartContent() {
 
       let btcDataXValues = dataXValues;
       let btcDataYValues = data.data.map((item: WalletBalanceItem) => item.btc);
-      // Remove the last value if it is 0
+
       if (btcDataYValues.at(-1) === 0) {
         btcDataYValues = btcDataYValues.slice(0, -1);
         btcDataXValues = btcDataXValues.slice(0, -1);
@@ -52,7 +52,7 @@ function ChartContent() {
 
       let modelDataXValues = dataXValues;
       let modelDtaYValues = data.data.map((item: WalletBalanceItem) => item.modelo);
-      // Remove the last value if it is 0
+
       if (modelDtaYValues.at(-1) === 0) {
         modelDtaYValues = modelDtaYValues.slice(0, -1);
         modelDataXValues = modelDataXValues.slice(0, -1);
@@ -61,7 +61,7 @@ function ChartContent() {
       setModelYValues(modelDtaYValues);
     } catch (error) {
       console.error("Error while fetching chart data:", error);
-      throw error; // Re-throw to trigger Suspense fallback
+      throw error;
     }
   }, []);
 
@@ -69,7 +69,6 @@ function ChartContent() {
     fetchChartData();
   }, [fetchChartData]);
 
-  // Show error if no data
   if (
     !btcXValues.length ||
     !btcYValues.length ||
@@ -136,7 +135,7 @@ function TableContent() {
       setTableData(response.data.data || []);
     } catch (error) {
       console.error("Error fetching table data:", error);
-      throw error; // Re-throw to trigger Suspense fallback
+      throw error;
     }
   }, []);
 
