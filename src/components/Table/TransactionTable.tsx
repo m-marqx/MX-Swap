@@ -96,11 +96,13 @@ export default function TransactionTable({ address }: { address: string }) {
                         const sendTransfers = erc20.filter(transfer => transfer.direction === 'send');
                         const receiveTransfers = erc20.filter(transfer => transfer.direction === 'receive');
 
-                        const calculateTotalValue = (transfers: Erc20Transfer[]) => {
-                            return transfers.reduce((sum, transfer) => {
-                                const value = parseFloat(transfer.value_formatted || '0');
-                                return sum + value;
-                            }, 0);
+                        const calculateTotalValue = (transfers: Erc20Transfer[], tokenName: string) => {
+                            return transfers
+                                .filter(transfer => transfer.token_name === tokenName)
+                                .reduce((sum, transfer) => {
+                                    const value = parseFloat(transfer.value_formatted || '0');
+                                    return sum + value;
+                                }, 0);
                         };
 
                         return {
