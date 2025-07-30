@@ -104,6 +104,15 @@ export default function TransactionTable({ address }: { address: string }) {
                                     return sum + value;
                                 }, 0);
                         };
+                        const maxPrecision = 12;
+                        const sendTokenDecimals = Number(sendTransfers[sendTransfers.length - 1].token_decimals);
+                        const receiveTokenDecimals = Number(receiveTransfers[receiveTransfers.length - 1].token_decimals);
+
+                        const sendTokenValue = calculateTotalValue(sendTransfers, sendTransfers[sendTransfers.length - 1].token_name)
+                        const receiveTokenValue = calculateTotalValue(receiveTransfers, receiveTransfers[receiveTransfers.length - 1].token_name);
+
+                        const sendTokenDecimalsFormatted = sendTokenDecimals <= maxPrecision ? sendTokenValue.toString() : sendTokenValue.toFixed(maxPrecision);
+                        const receiveTokenDecimalsFormatted = receiveTokenDecimals <= maxPrecision ? receiveTokenValue.toString() : receiveTokenValue.toFixed(maxPrecision);
 
                         return {
                             block_timestamp: item.block_timestamp,
@@ -114,7 +123,7 @@ export default function TransactionTable({ address }: { address: string }) {
                                     token_name: sendTransfers[sendTransfers.length - 1].token_name,
                                     token_symbol: sendTransfers[sendTransfers.length - 1].token_symbol,
                                     token_logo: sendTransfers[sendTransfers.length - 1].token_logo,
-                                    value_formatted: calculateTotalValue(sendTransfers).toFixed(Number(sendTransfers[sendTransfers.length - 1].token_decimals)),
+                                    value_formatted: sendTokenDecimalsFormatted,
                                 }
                                 : undefined,
                             to_token: receiveTransfers.length > 0
@@ -122,7 +131,7 @@ export default function TransactionTable({ address }: { address: string }) {
                                     token_name: receiveTransfers[receiveTransfers.length - 1].token_name,
                                     token_symbol: receiveTransfers[receiveTransfers.length - 1].token_symbol,
                                     token_logo: receiveTransfers[receiveTransfers.length - 1].token_logo,
-                                    value_formatted: calculateTotalValue(receiveTransfers).toFixed(Number(receiveTransfers[receiveTransfers.length - 1].token_decimals)),
+                                    value_formatted: receiveTokenDecimalsFormatted,
                                 }
                                 : undefined,
                         };
