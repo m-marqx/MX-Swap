@@ -84,7 +84,7 @@ const columns: ColumnDef<PortfolioAsset>[] = [
         accessorKey: "usd_price",
         cell: ({ row }) => {
             const value = Number(row.getValue("usd_price"));
-            return `$${value.toFixed(2)}`;
+            return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
         },
     },
     {
@@ -106,7 +106,7 @@ const columns: ColumnDef<PortfolioAsset>[] = [
 
         cell: ({ row }) => {
             const value = Number(row.getValue("usd_value"));
-            return `$${value.toFixed(2)}`;
+            return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
         },
     },
     {
