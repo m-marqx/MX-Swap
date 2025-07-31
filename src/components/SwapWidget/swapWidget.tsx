@@ -129,7 +129,7 @@ export function SwapWidget() {
     const [destTokenImage, setDestTokenImage] = useState<string | null>("https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdAC17F958D2ee523a2206206994597C13D831ec7/logo.png");
     const [srcBalanceValue, setSrcBalanceValue] = useState<string>("");
     const [destBalanceValue, setDestBalanceValue] = useState<string>("");
-    const [srcAmount, setAmount] = useState<string | null>("0.00000001");
+    const [srcAmount, setAmount] = useState<string | null>("1");
     const [destAmount, setDestAmount] = useState<string | undefined | null>(null);
     const [isValid, setIsValid] = useState<boolean>(false);
     const [secondsToNextFetch, setSecondsToNextFetch] = useState<number | null>(null);
@@ -270,9 +270,15 @@ export function SwapWidget() {
             const paraswapFormattedAmount =
                 Number(pData.priceRoute.destAmount) / 10 ** destTokenDecimals;
 
-            setParaswapPriceData(pData.priceRoute);
-
             const gasValue = await axios.get("https://api.paraswap.io/prices/gas/137?eip1559=false")
+
+            setParaswapPriceData(pData.priceRoute);
+            setSrcUSD(`${Number(pData.priceRoute.srcUSD).toFixed(2)} USD`);
+            setDestUSD(`${Number(pData.priceRoute.destUSD).toFixed(2)} USD`);
+            setGasCost(gasValue.data.fast)
+
+            setBtcPriceParaSwap(paraswapFormattedAmount);
+
             const transactionUrl = new URL("https://api.paraswap.io/transactions/137/")
             transactionUrl.searchParams.append("ignoreGasEstimate", 'false');
             transactionUrl.searchParams.append("ignoreAllowance", 'false');
@@ -293,12 +299,6 @@ export function SwapWidget() {
             })
 
             setParaSwapData(paraswapTransaction.data);
-
-            setSrcUSD(`${Number(pData.priceRoute.srcUSD).toFixed(2)} USD`);
-            setDestUSD(`${Number(pData.priceRoute.destUSD).toFixed(2)} USD`);
-            setGasCost(gasValue.data.fast)
-
-            setBtcPriceParaSwap(paraswapFormattedAmount);
 
             // KyberSwap
             const routeUrl = new URL(
@@ -714,7 +714,7 @@ export function SwapWidget() {
                         className="bg-main-color w-full rounded-3xl h-full"
                         onClick={handleSwapData}
                         // disabled={!isValid || loading || !bestPriceText}
-                        disabled={!bestPriceText}
+                        disabled={!bestPriceText || !paraSwapData || !kyberSwapData}
                     >
                         <span className="text-large-size text-[#000000a6] font-semibold">Review with {bestPriceText}</span>
                     </Button>
@@ -1139,7 +1139,7 @@ export function SwapWidget() {
                     // disabled={!isValid || loading}
                     disabled={!paraSwapData}
                 >
-                    Swap <span className="text-[#f75c2a] font-semibold">Velora</span>
+                    Swap with <span className="text-[#f75c2a] font-semibold">Velora</span>
                 </Button>
                 <Button
                     variant="outline"
