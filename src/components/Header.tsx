@@ -26,27 +26,6 @@ export const Header = () => {
                     </div>
                 </div>
 
-                <nav className="hidden md:flex items-center space-x-8">
-                    <Link
-                        href="/pandora/swap"
-                        className="text-muted-foreground hover:text-primary-text-color transition-colors"
-                    >
-                        Swap
-                    </Link>
-                    <Link
-                        href="/pandora/portfolio"
-                        className="text-muted-foreground hover:text-primary-text-color transition-colors"
-                    >
-                        Portfolio
-                    </Link>
-                    <Link
-                        href="/pandora/ai-signals"
-                        className="text-muted-foreground hover:text-primary-text-color transition-colors"
-                    >
-                        AI Signals
-                    </Link>
-                </nav>
-
                 <Button
                     className="bg-gradient-to-r from-primary to-primary/80 hover:shadow-[var(--glow-primary)] transition-all duration-300"
                     onClick={() => redirect("/pandora/ai-signals")}
