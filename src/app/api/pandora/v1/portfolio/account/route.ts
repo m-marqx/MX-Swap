@@ -10,7 +10,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Missing address" }, { status: 400 })
     }
 
-    const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjQyNjgwYjY0LTY2N2EtNDk2Mi1iODYzLWQ0MmExMzhlNjI5OSIsIm9yZ0lkIjoiNDU0OTA4IiwidXNlcklkIjoiNDY4MDM5IiwidHlwZUlkIjoiY2YyNzgxOTUtZGYxMi00MjBlLTk4ZTktMDAxN2UwYTZkNmJhIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NTAzOTU1MjIsImV4cCI6NDkwNjE1NTUyMn0.U__99fv4owRmaqmhEUtmA77zs4TO9IEJcBJdQoxQ0Zc'
+    const apiKey = process.env.MORALIS_API_KEY
     if (!apiKey) {
         return NextResponse.json({ error: "Missing Moralis API key" }, { status: 500 })
     }
