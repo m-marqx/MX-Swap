@@ -161,7 +161,7 @@ export default function HomePage() {
             {[
               {
                 icon: Zap,
-                title: "Advanced Agreggator",
+                title: "Advanced Aggregator",
                 description: "Get the best prices across multiple DEXs with our smart routing technology",
                 color: "#d87a16",
                 bgColor: "rgba(216, 122, 22, 0.15)",
