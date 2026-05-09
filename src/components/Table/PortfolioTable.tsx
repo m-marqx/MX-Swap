@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import {
     ColumnDef,
     flexRender,
@@ -21,33 +21,6 @@ import {
 } from "@/components/ui/table"
 import axios from "axios"
 
-const promiseCache = new Map<string, Promise<unknown>>()
-const dataCache = new Map<string, unknown>()
-
-function suspenseWrapper<T>(key: string, promiseFn: () => Promise<T>): T {
-    if (dataCache.has(key)) {
-        return dataCache.get(key) as T
-    }
-
-    if (promiseCache.has(key)) {
-        throw promiseCache.get(key)
-    }
-
-    const promise = promiseFn()
-        .then(data => {
-            dataCache.set(key, data)
-            promiseCache.delete(key)
-            return data
-        })
-        .catch(error => {
-            promiseCache.delete(key)
-            throw error
-        })
-
-    promiseCache.set(key, promise)
-    throw promise
-}
-
 type PortfolioAsset = {
     token_address: string
     name: string
@@ -57,6 +30,7 @@ type PortfolioAsset = {
     usd_value: number
     usd_price_24hr_percent_change: number
     amount: number
+    balance_formatted?: string
 }
 
 const columns: ColumnDef<PortfolioAsset>[] = [
@@ -124,23 +98,58 @@ const columns: ColumnDef<PortfolioAsset>[] = [
     },
 ]
 
+function mapPortfolioAssets(result: unknown): PortfolioAsset[] {
+    return Array.isArray(result) ? result : []
+}
+
 export default function PortfolioTable({ address }: { address: string }) {
-    if (!address) {
-        return <div className="text-center flex flex-col justify-center h-88 text-gray-500">Please connect your wallet</div>
-    }
-
-    const data = suspenseWrapper(
-        `portfolio-${address}`,
-        async () => {
-            const res = await axios.get(`/api/pandora/v1/portfolio?address=${address}`)
-            return res.data.result || []
-        }
-    )
-
+    const [data, setData] = useState<PortfolioAsset[]>([])
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
     const [sorting, setSorting] = useState<SortingState>([
         { id: "usd_value", desc: true },
     ])
     const containerRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (!address) {
+            setData([])
+            setError(null)
+            setIsLoading(false)
+            return
+        }
+
+        const controller = new AbortController()
+
+        setIsLoading(true)
+        setError(null)
+
+        axios
+            .get(`/api/pandora/v1/portfolio?address=${encodeURIComponent(address)}`, {
+                signal: controller.signal,
+            })
+            .then((res) => {
+                setData(mapPortfolioAssets(res.data?.result))
+            })
+            .catch((fetchError) => {
+                if (axios.isCancel(fetchError) || fetchError?.code === "ERR_CANCELED") {
+                    return
+                }
+
+                console.error("Error fetching portfolio:", fetchError)
+                setData([])
+                setError("Unable to load portfolio.")
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) {
+                    setIsLoading(false)
+                }
+            })
+
+        return () => {
+            controller.abort()
+        }
+    }, [address])
 
     const table = useReactTable({
         data,
@@ -225,7 +234,25 @@ export default function PortfolioTable({ address }: { address: string }) {
                 >
                     <Table className="table-fixed w-full scrollbar-subtle">
                         <TableBody>
-                            {table.getRowModel().rows?.length ? (
+                            {!address ? (
+                                <TableRow>
+                                    <TableCell colSpan={columns.length} className="h-24 text-center text-gray-500">
+                                        Please connect your wallet
+                                    </TableCell>
+                                </TableRow>
+                            ) : isLoading ? (
+                                <TableRow>
+                                    <TableCell colSpan={columns.length} className="h-24 text-center text-gray-500">
+                                        Loading portfolio...
+                                    </TableCell>
+                                </TableRow>
+                            ) : error ? (
+                                <TableRow>
+                                    <TableCell colSpan={columns.length} className="h-24 text-center text-red-400">
+                                        {error}
+                                    </TableCell>
+                                </TableRow>
+                            ) : table.getRowModel().rows?.length ? (
                                 table.getRowModel().rows.map((row) => (
                                     <TableRow
                                         key={row.id}
