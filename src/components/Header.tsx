@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import React from "react";
@@ -25,7 +24,6 @@ export const Header = () => {
                         </h1>
                     </div>
                 </div>
-
                 <Button
                     className="bg-gradient-to-r from-primary to-primary/80 hover:shadow-[var(--glow-primary)] transition-all duration-300"
                     onClick={() => redirect("/pandora/ai-signals")}
