@@ -1,6 +1,6 @@
 import axios from "axios";
 import * as echarts from "echarts";
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 
 type EChartsOption = echarts.EChartsOption;
 
@@ -11,31 +11,13 @@ interface DonutChartProps {
     title?: string;
 }
 
-const donutPromiseCache = new Map<string, Promise<unknown>>()
-const donutDataCache = new Map<string, unknown>()
+type PortfolioAsset = {
+    symbol?: string;
+    usd_value?: number;
+};
 
-function donutSuspenseWrapper<T>(key: string, promiseFn: () => Promise<T>): T {
-    if (donutDataCache.has(key)) {
-        return donutDataCache.get(key) as T
-    }
-
-    if (donutPromiseCache.has(key)) {
-        throw donutPromiseCache.get(key)
-    }
-
-    const promise = promiseFn()
-        .then(data => {
-            donutDataCache.set(key, data)
-            donutPromiseCache.delete(key)
-            return data
-        })
-        .catch(error => {
-            donutPromiseCache.delete(key)
-            throw error
-        })
-
-    donutPromiseCache.set(key, promise)
-    throw promise
+function mapPortfolioAssets(result: unknown): PortfolioAsset[] {
+    return Array.isArray(result) ? result : [];
 }
 
 export default function DonutChart({
@@ -44,31 +26,63 @@ export default function DonutChart({
     theme = "dark",
     title = "Portfolio Balances",
 }: DonutChartProps) {
-    if (!address) {
-        return <div className={`text-center flex flex-col justify-center text-gray-500 ${className}`}>Please connect your wallet</div>
-    }
-
     const chartRef = useRef<HTMLDivElement>(null);
-    const data = donutSuspenseWrapper(
-        `donut-${address}`,
-        async () => {
-            const res = await axios.get(`/api/pandora/v1/portfolio?address=${address}`);
-            return res.data.result || [];
+    const [data, setData] = useState<PortfolioAsset[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!address) {
+            setData([]);
+            setError(null);
+            setIsLoading(false);
+            return;
         }
-    );
+
+        const controller = new AbortController();
+
+        setIsLoading(true);
+        setError(null);
+
+        axios
+            .get(`/api/pandora/v1/portfolio?address=${encodeURIComponent(address)}`, {
+                signal: controller.signal,
+            })
+            .then((res) => {
+                setData(mapPortfolioAssets(res.data?.result));
+            })
+            .catch((fetchError) => {
+                if (axios.isCancel(fetchError) || fetchError?.code === "ERR_CANCELED") {
+                    return;
+                }
+
+                console.error("Error fetching allocation:", fetchError);
+                setData([]);
+                setError("Unable to load allocation.");
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) {
+                    setIsLoading(false);
+                }
+            });
+
+        return () => {
+            controller.abort();
+        };
+    }, [address]);
 
     // Define stable coins based on the provided data, all Stablcoins contains "USD" in their symbol,  the only exception is DAI which is a stable coin but does not contain "USD" in its symbol.
     const stableCoinsSymbols = data
-        .filter((asset) => asset.symbol.includes("USD") || asset.symbol === "DAI")
+        .filter((asset) => asset.symbol?.includes("USD") || asset.symbol === "DAI")
         .map((asset) => asset.symbol);
 
     const stableCoinValue = data
         .filter((asset) => stableCoinsSymbols.includes(asset.symbol))
-        .reduce((acc, asset) => acc + asset.usd_value, 0);
+        .reduce((acc, asset) => acc + Number(asset.usd_value || 0), 0);
 
     const nonStableCoinValue = data
         .filter((asset) => !stableCoinsSymbols.includes(asset.symbol))
-        .reduce((acc, asset) => acc + asset.usd_value, 0);
+        .reduce((acc, asset) => acc + Number(asset.usd_value || 0), 0);
 
     const chartData = [
         { value: stableCoinValue, name: "Stable", itemStyle: { color: "#d4d4d8" } },
@@ -77,7 +91,7 @@ export default function DonutChart({
 
     useEffect(() => {
         let myChart: echarts.ECharts | null = null;
-        if (chartRef.current) {
+        if (address && !isLoading && !error && chartRef.current) {
             myChart = echarts.init(chartRef.current, theme);
 
             const option: EChartsOption = {
@@ -138,7 +152,19 @@ export default function DonutChart({
                 window.removeEventListener("resize", handleResize);
             };
         }
-    }, [data, theme, title]); // Re-run effect if data, theme, or title changes
+    }, [address, data, error, isLoading, theme, title]); // Re-run effect if data, theme, or title changes
+
+    if (!address) {
+        return <div className={`text-center flex flex-col justify-center text-gray-500 ${className}`}>Please connect your wallet</div>
+    }
+
+    if (isLoading) {
+        return <div className={`text-center flex flex-col justify-center text-gray-500 ${className}`}>Loading allocation...</div>
+    }
+
+    if (error) {
+        return <div className={`text-center flex flex-col justify-center text-red-400 ${className}`}>{error}</div>
+    }
 
     return <div ref={chartRef} className={className}></div>;
 }
